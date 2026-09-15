@@ -1,0 +1,10 @@
+# SpecLens Streamlit 主题：深蓝工程风，与 Excel 报告表头 #1F4E79 一致
+[theme]
+base = "light"
+primaryColor = "#1F4E79"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EEF3F8"
+textColor = "#1F2937"
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,14 @@
+# 虚拟环境（Windows / 容器各自独立）
+.venv/
+.venv-docker/
+
+# 运行产物
+__pycache__/
+*.pyc
+output/
+
+# 密钥配置（云端用 Streamlit Secrets 注入，不入库）
+.env
+
+# IDE
+.vscode/
