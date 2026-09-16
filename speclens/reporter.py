@@ -3,7 +3,7 @@
 Excel 结构（对齐项目工程师的评审习惯）：
   Sheet1 汇总总览 —— 每份规格书的差异统计与风险分布
   Sheet2 差异清单 —— 所有 非一致 参数，红色=不满足 黄色=需评估
-  Sheet3 参数明细 —— 全量参数逐条对比（含证据页码、置信度、双通道来源）
+  Sheet3 参数明细 —— 与前端字段口径一致（含证据页码及双通道来源）
 """
 from __future__ import annotations
 
@@ -22,7 +22,16 @@ RED = PatternFill("solid", fgColor="F8CBAD")
 YELLOW = PatternFill("solid", fgColor="FFE699")
 GREEN = PatternFill("solid", fgColor="C6EFCE")
 
-STATUS_FILL = {"不满足": RED, "需评估": YELLOW, "满足": GREEN}
+STATUS_FILL = {"不满足": RED, "需评估": YELLOW}
+
+
+def _status_fill(result: ComparisonResult):
+    """Return the same status-cell fill used by the front-end table."""
+    if result.status in STATUS_FILL:
+        return STATUS_FILL[result.status]
+    if result.direction == "低于":
+        return GREEN
+    return None
 
 
 def save_excel(results: list[ComparisonResult], path: str | Path) -> Path:
@@ -70,26 +79,27 @@ def save_excel(results: list[ComparisonResult], path: str | Path) -> Path:
              r.customer_value, r.baseline_value, r.unit, r.direction, r.status,
              r.explanation, r.page]
         )
-        cell = ws2.cell(row=ws2.max_row, column=10)
-        if r.status in STATUS_FILL:
-            cell.fill = STATUS_FILL[r.status]
+        fill = _status_fill(r)
+        if fill:
+            ws2.cell(row=ws2.max_row, column=10).fill = fill
     _style_header(ws2)
 
     # ---- Sheet3 参数明细 ----
     ws3 = wb.create_sheet("参数明细")
     ws3.append(
         ["规格书", "客户", "参数编号", "参数名称", "类别", "客户要求原文", "客户要求(归一)", "内部基线",
-         "单位", "差异方向", "判定", "差异说明", "证据页", "置信度", "来源", "待复核"]
+         "单位", "差异方向", "判定", "差异说明", "证据页", "来源", "待复核"]
     )
     for r in sorted(results, key=lambda x: (x.spec_id, x.param_id)):
         ws3.append(
             [r.spec_id, r.customer_name, r.param_id, r.param_name, r.category, r.customer_raw,
-             r.customer_value, r.baseline_value, r.unit, r.direction, r.status, r.explanation,
-             r.page, r.confidence, r.source, "是" if r.needs_review else ""]
+             r.customer_value, r.baseline_value, r.unit, r.direction, r.status,
+             "" if r.direction == "一致" else r.explanation,
+             r.page, r.source, "是" if r.needs_review else ""]
         )
-        cell = ws3.cell(row=ws3.max_row, column=11)
-        if r.status in STATUS_FILL:
-            cell.fill = STATUS_FILL[r.status]
+        fill = _status_fill(r)
+        if fill:
+            ws3.cell(row=ws3.max_row, column=11).fill = fill
     _style_header(ws3)
 
     for sheet in (ws, ws2, ws3):

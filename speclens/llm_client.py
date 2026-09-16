@@ -14,11 +14,27 @@ load_dotenv()
 
 
 class LLMClient:
-    def __init__(self) -> None:
-        self.api_key = os.getenv("LLM_API_KEY", "")
-        self.base_url = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
-        self.model = os.getenv("LLM_MODEL", "glm-4.6")
-        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        temperature: float | None = None,
+        timeout: float | None = None,
+    ) -> None:
+        self.api_key = os.getenv("LLM_API_KEY", "") if api_key is None else api_key.strip()
+        self.base_url = (
+            os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+            if base_url is None
+            else base_url.strip()
+        )
+        self.model = os.getenv("LLM_MODEL", "glm-4.6") if model is None else model.strip()
+        self.temperature = (
+            float(os.getenv("LLM_TEMPERATURE", "0.1"))
+            if temperature is None
+            else float(temperature)
+        )
+        self.timeout = float(os.getenv("LLM_TIMEOUT", "120")) if timeout is None else float(timeout)
         self._client = None
         if self.api_key:
             from openai import OpenAI
@@ -26,7 +42,7 @@ class LLMClient:
             self._client = OpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
-                timeout=float(os.getenv("LLM_TIMEOUT", "120")),
+                timeout=self.timeout,
             )
 
     @property
