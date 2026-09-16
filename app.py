@@ -282,19 +282,58 @@ def find_history_record(record_id: str | None) -> dict | None:
     return record if isinstance(record, dict) and record.get("results") else None
 
 
+def history_document_key(record: dict) -> str:
+    """Return a stable document identity across modes, models, and legacy records."""
+    spec_ids = sorted(
+        {
+            str(result.get("spec_id", "")).strip().casefold()
+            for result in record.get("results", [])
+            if str(result.get("spec_id", "")).strip()
+        }
+    )
+    if len(spec_ids) == 1:
+        return f"spec:{spec_ids[0]}"
+
+    document_hash = str(record.get("document_hash", "")).strip().casefold()
+    if document_hash:
+        return f"hash:{document_hash}"
+
+    file_name = Path(str(record.get("file_name", "未命名文档"))).stem
+    normalized_name = "".join(file_name.split()).casefold()
+    return f"name:{normalized_name}"
+
+
+def history_record_priority(record: dict) -> tuple:
+    """Prefer reviewed records, then the most recently reviewed/analyzed run."""
+    reviews = record.get("reviews", {})
+    review_count = len(reviews) if isinstance(reviews, dict) else 0
+    audit_log = record.get("audit_log", [])
+    if not isinstance(audit_log, list):
+        audit_log = []
+    review_times = [
+        str(entry.get("timestamp", ""))
+        for entry in audit_log
+        if isinstance(entry, dict) and entry.get("timestamp")
+    ]
+    latest_review_time = max(review_times, default="")
+    activity_time = str(record.get("updated_at") or record.get("analyzed_at", ""))
+    has_review = bool(review_count or audit_log)
+    return has_review, latest_review_time, activity_time, review_count
+
+
 def deduplicate_history_records(records: list[dict]) -> list[dict]:
-    """同一文档可能以不同分析模式保存多次；聚合时仅保留最新一次。"""
-    latest: list[dict] = []
-    seen: set[str] = set()
+    """Keep one representative per specification across modes and legacy records."""
+    representatives: dict[str, dict] = {}
     for record in records:
-        document_key = str(record.get("document_hash", "")).strip()
-        if not document_key:
-            document_key = str(record.get("file_name", "未命名文档")).strip().casefold()
-        if document_key in seen:
-            continue
-        seen.add(document_key)
-        latest.append(record)
-    return latest
+        document_key = history_document_key(record)
+        current = representatives.get(document_key)
+        if current is None or history_record_priority(record) > history_record_priority(current):
+            representatives[document_key] = record
+    return sorted(
+        representatives.values(),
+        key=lambda item: str(item.get("updated_at") or item.get("analyzed_at", "")),
+        reverse=True,
+    )
 
 
 def pipeline_args(config: dict | None) -> tuple[str, str, str, float, int]:
@@ -1424,7 +1463,8 @@ with st.sidebar:
     st.divider()
     st.markdown("#### 历史文档")
     all_history_records = load_history_records()
-    history_records = list(all_history_records)
+    unique_history_records = deduplicate_history_records(all_history_records)
+    history_records = list(unique_history_records)
     history_query = st.text_input(
         "搜索历史记录",
         placeholder="搜索文件名、客户或模型",
@@ -1482,7 +1522,7 @@ with st.sidebar:
         st.session_state.pop("selected_history_id", None)
         st.rerun()
     if all_history_records:
-        independent_count = len(deduplicate_history_records(all_history_records))
+        independent_count = len(unique_history_records)
         st.caption(f"汇总全部历史 · {independent_count} 份独立文档")
 
     with st.expander("处理流程"):

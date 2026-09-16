@@ -77,6 +77,19 @@ LLM 的角色从"全知全能的判官"变成"被清单约束、被规则校验�
 
 ## 五、快速开始
 
+### Windows 双击启动（推荐）
+
+将整个项目文件夹发送给其他人后，对方只需双击根目录中的 `Start_SpecLens.bat`：
+
+1. 自动检查 Python 3.10–3.13；没有兼容版本时尝试通过 Windows `winget` 为当前用户安装 Python 3.12；
+2. 自动创建独立的 `.speclens_runtime` 运行环境并安装 `requirements.txt` 中的依赖，不影响开发环境；
+3. 自动选择 `8501–8510` 范围内的可用端口，启动服务并打开浏览器；
+4. 再次启动会复用已有环境，仅在依赖文件变化时更新；关闭启动窗口即可停止服务。
+
+首次运行需要联网下载 Python 或依赖。默认可直接使用离线分析模式，无需配置模型；如需模型分析，可在界面左侧配置 OpenAI 兼容接口。
+
+### 命令行启动
+
 ```bash
 pip install -r requirements.txt
 
@@ -98,6 +111,8 @@ streamlit run app.py
 
 ```
 spec-lens/
+├── Start_SpecLens.bat       # Windows 双击自动部署与启动
+├── scripts/start_local.ps1  # 环境检查、依赖安装与服务启动
 ├── app.py                  # Streamlit Demo（上传解析 / 差异矩阵 / 报告导出）
 ├── run_pipeline.py         # 批量流水线入口（CLI，含效果自测）
 ├── requirements.txt

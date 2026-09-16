@@ -1,6 +1,7 @@
 # 虚拟环境（Windows / 容器各自独立）
 .venv/
 .venv-docker/
+.speclens_runtime/
 
 # 运行产物
 __pycache__/
